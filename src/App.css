@@ -1,0 +1,100 @@
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.sidebar-container {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex: 1;
+  background-color: var(--bg-body);
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.mobile-header {
+  display: none;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .main-content {
+    height: auto;
+    min-height: calc(100vh - 60px); /* subtract header height */
+  }
+
+  .sidebar-container {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar-container.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    padding: 0 var(--spacing-lg);
+    background-color: var(--bg-card);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 900;
+  }
+
+  .mobile-header h2 {
+    font-size: 1rem;
+    color: var(--color-primary);
+    margin: 0;
+  }
+
+  .logo-placeholder-mobile {
+    width: 24px;
+    height: 24px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Leaflet Map Overrides */
+.map-tooltip {
+  background-color: var(--bg-card);
+  border: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: 'Inter', sans-serif;
+}
+.leaflet-container {
+  font-family: inherit;
+}

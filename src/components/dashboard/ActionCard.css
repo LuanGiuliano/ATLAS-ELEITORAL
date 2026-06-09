@@ -1,0 +1,12 @@
+.action-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.action-card-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
