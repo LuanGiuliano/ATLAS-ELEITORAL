@@ -4,10 +4,12 @@ import VisaoGeral from './views/VisaoGeral';
 import PerfilEleitorado from './views/PerfilEleitorado';
 import DensidadeEleitoral from './views/DensidadeEleitoral';
 import Mobilizacao from './views/Mobilizacao';
+import Login from './views/Login';
 import './App.css';
 import { Menu } from 'lucide-react';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('geral');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -20,6 +22,10 @@ function App() {
       default: return <VisaoGeral />;
     }
   };
+
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="app-layout">
