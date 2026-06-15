@@ -1,13 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CountdownCard from '../components/dashboard/CountdownCard';
 import StatCard from '../components/dashboard/StatCard';
-import { Users, MapPin, CheckCircle, Info, HelpCircle } from 'lucide-react';
+import { Users, MapPin, CheckCircle, Info, HelpCircle, Calendar, AlertCircle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Modal from '../components/ui/Modal';
+import apoiadoresData from '../data/apoiadores.json';
 import './Views.css';
 
 const VisaoGeral = () => {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  const [apoiadores, setApoiadores] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('apoiadoresData');
+    if (saved) {
+      setApoiadores(JSON.parse(saved));
+    } else {
+      const initial = apoiadoresData.filter(item => item.APOIADOR);
+      setApoiadores(initial);
+      localStorage.setItem('apoiadoresData', JSON.stringify(initial));
+    }
+  }, []);
+
+  const totalApoiadores = apoiadores.length;
+  const municipiosValidos = apoiadores.map(item => item['MUNICÍPIO']).filter(Boolean);
+  const municipiosUnicos = new Set(municipiosValidos).size;
+
+  const agendas = apoiadores
+    .filter(item => item.AGENDA && item.AGENDA !== 'A definir')
+    .map(item => {
+      const dateObj = new Date(item.AGENDA);
+      return {
+        ...item,
+        dateObj,
+        timestamp: dateObj.getTime(),
+      };
+    })
+    .filter(item => !isNaN(item.timestamp))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  const now = new Date().getTime();
 
   const evolutionData = [
     { name: 'Jan', apoiadores: 120 },
@@ -41,24 +74,19 @@ const VisaoGeral = () => {
         <p>Resumo da campanha e panorama eleitoral.</p>
       </div>
 
-      <div style={{ backgroundColor: 'var(--color-orange-bg)', color: 'var(--color-orange-text)', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '0.95rem' }}>
-        <Info size={20} />
-        <span>Os valores numéricos e os gráficos exibidos nesta tela são apenas para fins de demonstração (Mock Data).</span>
-      </div>
-
       <div className="view-grid-top mb-lg">
         <CountdownCard />
         <div className="stats-col">
           <StatCard 
             title="Apoiadores Registrados" 
-            value="1.245" 
-            subtitle="+12% esta semana" 
+            value={totalApoiadores.toString()} 
+            subtitle="Ativos na base" 
             icon={Users} 
             color="primary"
           />
           <StatCard 
-            title="Municípios Visitados" 
-            value="34" 
+            title="Municípios Alcançados" 
+            value={municipiosUnicos.toString()} 
             subtitle="de 144" 
             icon={MapPin} 
             color="orange"
@@ -99,22 +127,39 @@ const VisaoGeral = () => {
       </div>
 
       <div className="view-section mt-xl">
-        <h2>Metas da Semana</h2>
+        <h2>Próximas Agendas</h2>
         <div className="goals-list">
-          <div className="goal-item">
-            <CheckCircle className="text-green" size={24} />
-            <div className="goal-content">
-              <h4>Reunião com lideranças da Zona Norte</h4>
-              <p>Realizado em 12 de Outubro. 50+ pessoas presentes.</p>
-            </div>
-          </div>
-          <div className="goal-item pending">
-            <CheckCircle className="text-gray" size={24} />
-            <div className="goal-content">
-              <h4>Visita ao sindicato dos professores</h4>
-              <p>Agendado para 15 de Outubro.</p>
-            </div>
-          </div>
+          {agendas.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', padding: '12px' }}>Nenhuma agenda cadastrada no momento. Adicione agendas na aba Apoiadores.</div>
+          ) : (
+            agendas.slice(0, 5).map((agendaItem, idx) => {
+              const isPast = agendaItem.timestamp < now;
+              const dataFormatada = agendaItem.dateObj.toLocaleDateString('pt-BR');
+              const horaFormatada = agendaItem.dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              const isVerySoon = !isPast && (agendaItem.timestamp - now < 86400000 * 3); // menos de 3 dias
+              
+              return (
+                <div className={`goal-item ${isPast ? '' : 'pending'}`} key={idx}>
+                  {isPast ? (
+                    <CheckCircle className="text-green" size={24} />
+                  ) : (
+                    <Calendar className={isVerySoon ? "text-orange" : "text-gray"} size={24} />
+                  )}
+                  <div className="goal-content">
+                    <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      Reunião com {agendaItem.APOIADOR}
+                      {isVerySoon && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', backgroundColor: 'var(--color-orange-bg)', color: 'var(--color-orange-text)', padding: '2px 6px', borderRadius: '4px' }}>
+                          <AlertCircle size={12} /> Próximo
+                        </span>
+                      )}
+                    </h4>
+                    <p>{agendaItem['MUNICÍPIO']} - {dataFormatada} às {horaFormatada}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

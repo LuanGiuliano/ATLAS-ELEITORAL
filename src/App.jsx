@@ -4,6 +4,7 @@ import VisaoGeral from './views/VisaoGeral';
 import PerfilEleitorado from './views/PerfilEleitorado';
 import DensidadeEleitoral from './views/DensidadeEleitoral';
 import Mobilizacao from './views/Mobilizacao';
+import Apoiadores from './views/Apoiadores';
 import Login from './views/Login';
 import './App.css';
 import { Menu } from 'lucide-react';
@@ -19,6 +20,7 @@ function App() {
       case 'perfil': return <PerfilEleitorado />;
       case 'densidade': return <DensidadeEleitoral />;
       case 'mobilizacao': return <Mobilizacao />;
+      case 'apoiadores': return <Apoiadores />;
       default: return <VisaoGeral />;
     }
   };

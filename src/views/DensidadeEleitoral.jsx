@@ -5,45 +5,87 @@ import './Views.css';
 import Pill from '../components/ui/Pill';
 import { Map, Flame, Info, HelpCircle } from 'lucide-react';
 import Modal from '../components/ui/Modal';
+import apoiadoresData from '../data/apoiadores.json';
 
 const DensidadeEleitoral = () => {
   const [geoData, setGeoData] = useState(null);
   const [mapMode, setMapMode] = useState('densidade'); // 'densidade' ou 'calor'
-  const [mockDataMap, setMockDataMap] = useState({});
+  const [realDataMap, setRealDataMap] = useState({});
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  };
+
   useEffect(() => {
+    const saved = localStorage.getItem('apoiadoresData');
+    let dataList = [];
+    if (saved) {
+      dataList = JSON.parse(saved);
+    } else {
+      dataList = apoiadoresData.filter(item => item.APOIADOR);
+      localStorage.setItem('apoiadoresData', JSON.stringify(dataList));
+    }
+
+    const dataMap = {};
+    dataList.forEach(item => {
+      const municipio = item['MUNICÍPIO'];
+      if (!municipio) return;
+      
+      // Alguns tem "Belém ou Vigia", vamos pegar o primeiro
+      const munPrimary = municipio.split(' ou ')[0];
+      const normMun = normalizeString(munPrimary);
+
+      if (!dataMap[normMun]) {
+        dataMap[normMun] = { count: 0, agendas: [], apoiadores: [], maxEngajamento: 0 };
+      }
+      dataMap[normMun].count += 1;
+      dataMap[normMun].apoiadores.push(item);
+      
+      const eng = item['INDICADOR DE ENGAJAMENTO'] || '';
+      if (eng.includes('Muito Alto')) dataMap[normMun].maxEngajamento = Math.max(dataMap[normMun].maxEngajamento, 3);
+      else if (eng.includes('Alto')) dataMap[normMun].maxEngajamento = Math.max(dataMap[normMun].maxEngajamento, 2);
+      else if (eng.includes('Médio')) dataMap[normMun].maxEngajamento = Math.max(dataMap[normMun].maxEngajamento, 1);
+      
+      if (item.AGENDA && item.AGENDA !== 'A definir') {
+        dataMap[normMun].agendas.push({
+          apoiador: item.APOIADOR,
+          agenda: item.AGENDA
+        });
+      }
+    });
+
+    setRealDataMap(dataMap);
+
     fetch('/para-muni.json')
       .then(res => res.json())
       .then(data => {
-        const mockMap = {};
-        data.features.forEach(feature => {
-          const id = feature.properties.codarea;
-          mockMap[id] = {
-            densidade: Math.random(),
-            calor: Math.random()
-          };
-        });
-        setMockDataMap(mockMap);
         setGeoData(data);
       })
       .catch(err => console.error('Erro ao carregar mapa:', err));
   }, []);
 
   const getStyle = (feature) => {
-    const id = feature.properties.codarea;
-    const data = mockDataMap[id];
+    const name = feature.properties.name || feature.properties.nome;
+    const normMun = normalizeString(name);
+    const data = realDataMap[normMun];
+
     let color = '#ccc';
     let fillOpacity = 0.3;
     let weight = 0.5;
     let borderColor = 'white';
 
-    if (data) {
+    if (data && data.count > 0) {
       if (mapMode === 'densidade') {
-        color = `hsl(217, 90%, ${100 - (data.densidade * 60)}%)`; 
+        // base azul, intensidade pelo count
+        const intensity = Math.min(100, 40 + (data.count * 10));
+        color = `hsl(217, 90%, ${100 - (intensity * 0.6)}%)`; 
         fillOpacity = 0.8;
       } else {
-        color = `hsl(0, 90%, ${100 - (data.calor * 50)}%)`;
+        // modo calor
+        const intensity = data.maxEngajamento === 3 ? 90 : data.maxEngajamento === 2 ? 70 : 50;
+        color = `hsl(0, 90%, ${100 - (intensity * 0.5)}%)`;
         fillOpacity = 0.8;
       }
     }
@@ -58,22 +100,50 @@ const DensidadeEleitoral = () => {
   };
 
   const onEachFeature = (feature, layer) => {
-    const id = feature.properties.codarea;
-    const name = feature.properties.name || feature.properties.nome || `Município ${id}`;
-    const data = mockDataMap[id];
+    const name = feature.properties.name || feature.properties.nome || `Município ${feature.properties.codarea}`;
+    const normMun = normalizeString(name);
+    const data = realDataMap[normMun];
     
-    const valText = data ? `Valor: ${(data[mapMode] * 100).toFixed(1)}%` : 'Sem dados';
-    
-    layer.bindTooltip(`
-      <div style="text-align: center;">
-        <strong>${name}</strong><br/>
-        <span style="font-size: 0.85em; opacity: 0.8;">${valText}</span>
-      </div>
-    `, {
-      permanent: false,
-      direction: 'center',
-      className: 'map-tooltip'
-    });
+    if (data && data.count > 0) {
+      const agendasHtml = data.agendas.length > 0 
+        ? `<div style="margin-top:4px; font-size:0.75em; color:var(--color-primary); text-align:left; background:rgba(255,255,255,0.8); padding:4px; border-radius:4px;">
+            <strong>Agendas:</strong><br/>
+            ${data.agendas.map(a => {
+              try {
+                const dataObj = new Date(a.agenda);
+                const dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' às ' + dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                return `- ${a.apoiador}: ${dataFormatada}`;
+              } catch (e) {
+                return `- ${a.apoiador}: ${a.agenda}`;
+              }
+            }).join('<br/>')}
+           </div>`
+        : '';
+        
+      layer.bindTooltip(`
+        <div style="text-align: center;">
+          <strong>${name}</strong><br/>
+          <span style="font-size: 0.85em; opacity: 0.8;">${data.count} Apoiador(es)</span>
+          ${agendasHtml}
+        </div>
+      `, {
+        permanent: true,
+        direction: 'center',
+        className: 'map-tooltip',
+        opacity: 0.9
+      });
+    } else {
+      layer.bindTooltip(`
+        <div style="text-align: center;">
+          <strong>${name}</strong><br/>
+          <span style="font-size: 0.85em; opacity: 0.8;">Sem dados</span>
+        </div>
+      `, {
+        permanent: false,
+        direction: 'center',
+        className: 'map-tooltip'
+      });
+    }
   };
 
   const topMunicipios = [
@@ -120,11 +190,6 @@ const DensidadeEleitoral = () => {
         </div>
       </div>
 
-      <div style={{ backgroundColor: 'var(--color-orange-bg)', color: 'var(--color-orange-text)', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500', fontSize: '0.95rem' }}>
-        <Info size={20} />
-        <span>Os valores numéricos e as cores exibidas no mapa e nos gráficos abaixo são apenas para fins de demonstração visual (Mock Data).</span>
-      </div>
-
       <div className="view-section">
         <div className="chart-container" style={{ height: '550px', backgroundColor: '#e5e7eb', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
           {geoData ? (
@@ -135,7 +200,7 @@ const DensidadeEleitoral = () => {
               zoomControl={true}
             >
               <GeoJSON 
-                key={mapMode}
+                key={mapMode + Object.keys(realDataMap).length}
                 data={geoData} 
                 style={getStyle}
                 onEachFeature={onEachFeature}

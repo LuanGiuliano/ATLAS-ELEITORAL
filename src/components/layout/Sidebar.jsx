@@ -8,6 +8,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'perfil', label: 'Perfil do Eleitorado', icon: Users },
     { id: 'densidade', label: 'Densidade Eleitoral', icon: Map },
     { id: 'mobilizacao', label: 'Mobilização', icon: Megaphone },
+    { id: 'apoiadores', label: 'Apoiadores', icon: Users },
   ];
 
   return (
