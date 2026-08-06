@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Plus } from 'lucide-react';
+import Modal from '../components/ui/Modal';
 import apoiadoresData from '../data/apoiadores.json';
 import './Views.css';
 
 const Apoiadores = () => {
   const [apoiadores, setApoiadores] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [novoApoiador, setNovoApoiador] = useState({
+    APOIADOR: '',
+    'MUNICÍPIO': '',
+    'ÁREA DE ATUAÇÃO': '',
+    'NÚCLEO DE INDICAÇÃO': '',
+    'INDICADOR DE ENGAJAMENTO': '',
+    'CONTATO': ''
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem('apoiadoresData');
@@ -22,6 +33,27 @@ const Apoiadores = () => {
     updated[index].AGENDA = value;
     setApoiadores(updated);
     localStorage.setItem('apoiadoresData', JSON.stringify(updated));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNovoApoiador(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddApoiador = (e) => {
+    e.preventDefault();
+    const updated = [...apoiadores, novoApoiador];
+    setApoiadores(updated);
+    localStorage.setItem('apoiadoresData', JSON.stringify(updated));
+    setIsModalOpen(false);
+    setNovoApoiador({
+      APOIADOR: '',
+      'MUNICÍPIO': '',
+      'ÁREA DE ATUAÇÃO': '',
+      'NÚCLEO DE INDICAÇÃO': '',
+      'INDICADOR DE ENGAJAMENTO': '',
+      'CONTATO': ''
+    });
   };
 
   const engajamentoMap = {};
@@ -49,11 +81,21 @@ const Apoiadores = () => {
 
   return (
     <div className="view-container animate-fade-in">
-      <div className="view-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h1>Apoiadores</h1>
+      <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1>Apoiadores</h1>
+          </div>
+          <p>Gestão e visualização da base de apoiadores cadastrados.</p>
         </div>
-        <p>Gestão e visualização da base de apoiadores cadastrados.</p>
+        <button 
+          className="btn-primary" 
+          onClick={() => setIsModalOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' }}
+        >
+          <Plus size={18} />
+          Adicionar Apoiador
+        </button>
       </div>
 
       <div className="demo-grid mt-lg mb-lg">
@@ -99,6 +141,7 @@ const Apoiadores = () => {
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Área de Atuação</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Núcleo</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Engajamento</th>
+                <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Contato</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Agenda</th>
               </tr>
             </thead>
@@ -131,6 +174,7 @@ const Apoiadores = () => {
                       {apoiador['INDICADOR DE ENGAJAMENTO']}
                     </span>
                   </td>
+                  <td style={{ padding: '16px' }}>{apoiador.CONTATO || '-'}</td>
                   <td style={{ padding: '16px' }}>
                     <input 
                       type="datetime-local" 
@@ -153,6 +197,46 @@ const Apoiadores = () => {
           </table>
         </div>
       </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Adicionar Novo Apoiador">
+        <form onSubmit={handleAddApoiador} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Nome do Apoiador</label>
+            <input required type="text" name="APOIADOR" value={novoApoiador.APOIADOR} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Município</label>
+            <input required type="text" name="MUNICÍPIO" value={novoApoiador['MUNICÍPIO']} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Área de Atuação</label>
+            <input type="text" name="ÁREA DE ATUAÇÃO" value={novoApoiador['ÁREA DE ATUAÇÃO']} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Núcleo de Indicação</label>
+            <input type="text" name="NÚCLEO DE INDICAÇÃO" value={novoApoiador['NÚCLEO DE INDICAÇÃO']} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Engajamento</label>
+            <select name="INDICADOR DE ENGAJAMENTO" value={novoApoiador['INDICADOR DE ENGAJAMENTO']} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+              <option value="">Selecione...</option>
+              <option value="Muito Alto">Muito Alto</option>
+              <option value="Alto">Alto</option>
+              <option value="Médio">Médio</option>
+              <option value="Baixo">Baixo</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Informações de Contato</label>
+            <input type="text" name="CONTATO" value={novoApoiador.CONTATO} onChange={handleInputChange} placeholder="Email, Telefone, etc." style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+            <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer' }}>Cancelar</button>
+            <button type="submit" style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '500' }}>Salvar</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
