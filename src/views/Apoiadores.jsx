@@ -1,44 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Plus, Edit2 } from 'lucide-react';
+import { Plus, Edit2, Database, RefreshCw } from 'lucide-react';
 import Modal from '../components/ui/Modal';
-import apoiadoresData from '../data/apoiadores.json';
+import { supabase } from '../lib/supabase';
+import { municipiosPA } from '../data/municipiosPA';
 import './Views.css';
 
 const Apoiadores = () => {
   const [apoiadores, setApoiadores] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dbStatus, setDbStatus] = useState('Desconectado');
   
   const initialState = {
-    APOIADOR: '',
-    'MUNICÍPIO': '',
-    'ÁREA DE ATUAÇÃO': '',
-    'NÚCLEO DE INDICAÇÃO': '',
-    'INDICADOR DE ENGAJAMENTO': '',
-    'CONTATO': '',
-    'FAIXA_ETARIA': '',
-    'OBSERVACOES': ''
+    nome: '',
+    municipio: '',
+    area_atuacao: '',
+    nucleo_indicacao: '',
+    faixa_etaria: '',
+    telefone: '',
+    agenda: ''
   };
   
   const [novoApoiador, setNovoApoiador] = useState(initialState);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('apoiadoresData');
-    if (saved) {
-      setApoiadores(JSON.parse(saved));
-    } else {
-      const initial = apoiadoresData.filter(item => item.APOIADOR);
-      setApoiadores(initial);
-      localStorage.setItem('apoiadoresData', JSON.stringify(initial));
+  const fetchApoiadores = async () => {
+    setIsLoading(true);
+    try {
+      if (!import.meta.env.VITE_SUPABASE_URL) {
+        setDbStatus('Faltando .env');
+        setIsLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.from('apoiadores').select('*');
+      if (error) throw error;
+      setApoiadores(data || []);
+      setDbStatus('Conectado');
+    } catch (error) {
+      console.error('Erro ao buscar apoiadores:', error);
+      setDbStatus('Erro de Conexão');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchApoiadores();
   }, []);
 
-  const handleAgendaChange = (index, value) => {
-    const updated = [...apoiadores];
-    updated[index].AGENDA = value;
-    setApoiadores(updated);
-    localStorage.setItem('apoiadoresData', JSON.stringify(updated));
+  const handleAgendaChange = async (index, value) => {
+    const apoiadorId = apoiadores[index].id;
+    if (!apoiadorId) return;
+
+    try {
+      const { error } = await supabase.from('apoiadores').update({ agenda: value }).eq('id', apoiadorId);
+      if (error) throw error;
+      
+      const updated = [...apoiadores];
+      updated[index].agenda = value;
+      setApoiadores(updated);
+    } catch (error) {
+      console.error('Erro ao atualizar agenda:', error);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -58,37 +82,54 @@ const Apoiadores = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveApoiador = (e) => {
+  const handleSaveApoiador = async (e) => {
     e.preventDefault();
-    let updated;
-    if (editIndex !== null) {
-      updated = [...apoiadores];
-      updated[editIndex] = novoApoiador;
-    } else {
-      updated = [...apoiadores, novoApoiador];
+    setIsLoading(true);
+    try {
+      if (editIndex !== null && novoApoiador.id) {
+        // Editar
+        const { error } = await supabase.from('apoiadores').update({
+          nome: novoApoiador.nome,
+          municipio: novoApoiador.municipio,
+          area_atuacao: novoApoiador.area_atuacao,
+          nucleo_indicacao: novoApoiador.nucleo_indicacao,
+          faixa_etaria: novoApoiador.faixa_etaria,
+          telefone: novoApoiador.telefone,
+          agenda: novoApoiador.agenda
+        }).eq('id', novoApoiador.id);
+        if (error) throw error;
+      } else {
+        // Criar
+        const { error } = await supabase.from('apoiadores').insert([{
+          nome: novoApoiador.nome,
+          municipio: novoApoiador.municipio,
+          area_atuacao: novoApoiador.area_atuacao,
+          nucleo_indicacao: novoApoiador.nucleo_indicacao,
+          faixa_etaria: novoApoiador.faixa_etaria,
+          telefone: novoApoiador.telefone,
+          agenda: novoApoiador.agenda
+        }]);
+        if (error) throw error;
+      }
+      
+      await fetchApoiadores();
+      setIsLoading(false);
+      setIsModalOpen(false);
+      setEditIndex(null);
+      setNovoApoiador(initialState);
+    } catch (error) {
+      console.error('Erro ao salvar apoiador:', error);
+      setIsLoading(false);
+      alert('Erro ao salvar apoiador no banco de dados.');
     }
-    setApoiadores(updated);
-    localStorage.setItem('apoiadoresData', JSON.stringify(updated));
-    setIsModalOpen(false);
-    setEditIndex(null);
-    setNovoApoiador(initialState);
   };
 
-  const engajamentoMap = {};
   const areaMap = {};
 
   apoiadores.forEach(item => {
-    const eng = item['INDICADOR DE ENGAJAMENTO'] || 'Não definido';
-    engajamentoMap[eng] = (engajamentoMap[eng] || 0) + 1;
-
-    const area = item['ÁREA DE ATUAÇÃO'] || 'Não definida';
+    const area = item.area_atuacao || 'Não definida';
     areaMap[area] = (areaMap[area] || 0) + 1;
   });
-
-  const engajamentoData = Object.keys(engajamentoMap).map(key => ({
-    name: key,
-    value: engajamentoMap[key]
-  })).sort((a, b) => b.value - a.value);
 
   const areaData = Object.keys(areaMap).map(key => ({
     name: key,
@@ -103,35 +144,38 @@ const Apoiadores = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h1>Apoiadores</h1>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '12px', backgroundColor: dbStatus === 'Conectado' ? 'var(--color-green-bg)' : 'var(--color-orange-bg)', color: dbStatus === 'Conectado' ? 'var(--color-green-text)' : 'var(--color-orange-text)', fontWeight: '600' }}>
+              <Database size={12} />
+              {dbStatus}
+            </span>
           </div>
-          <p>Gestão e visualização da base de apoiadores cadastrados.</p>
+          <p>Gestão e visualização da base de apoiadores cadastrados no banco de dados.</p>
         </div>
-        <button 
-          className="btn-primary" 
-          onClick={handleOpenAddModal}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' }}
-        >
-          <Plus size={18} />
-          Adicionar Apoiador
-        </button>
+        
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button 
+            className="btn-secondary" 
+            onClick={fetchApoiadores}
+            disabled={isLoading}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'transparent', border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+            {isLoading ? 'Atualizando...' : 'Atualizar'}
+          </button>
+
+          <button 
+            className="btn-primary" 
+            onClick={handleOpenAddModal}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '500', transition: 'all 0.2s' }}
+          >
+            <Plus size={18} />
+            Adicionar Apoiador
+          </button>
+        </div>
       </div>
 
       <div className="demo-grid mt-lg mb-lg">
-        <div className="view-section">
-          <h2>Indicadores de Engajamento</h2>
-          <div className="chart-container" style={{ height: '300px', backgroundColor: 'var(--bg-card)', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={engajamentoData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} fill="#8884d8" label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}>
-                  {engajamentoData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+
 
         <div className="view-section">
           <h2>Áreas de Atuação</h2>
@@ -157,9 +201,8 @@ const Apoiadores = () => {
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Apoiador</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Município</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Área de Atuação</th>
-                <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Núcleo</th>
-                <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Engajamento</th>
-                <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Contato</th>
+                <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Quem Indicou?</th>
+                <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Telefone</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)' }}>Agenda</th>
                 <th style={{ padding: '16px', fontWeight: '600', color: 'var(--text-muted)', textAlign: 'center' }}>Ações</th>
               </tr>
@@ -167,37 +210,15 @@ const Apoiadores = () => {
             <tbody>
               {apoiadores.map((apoiador, index) => (
                 <tr key={index} style={{ borderBottom: '1px solid var(--border-color)' }} className="table-row-hover">
-                  <td style={{ padding: '16px', fontWeight: '500' }}>{apoiador.APOIADOR}</td>
-                  <td style={{ padding: '16px' }}>{apoiador['MUNICÍPIO']}</td>
-                  <td style={{ padding: '16px' }}>{apoiador['ÁREA DE ATUAÇÃO']}</td>
-                  <td style={{ padding: '16px' }}>{apoiador['NÚCLEO DE INDICAÇÃO']}</td>
-                  <td style={{ padding: '16px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      fontSize: '0.85rem',
-                      fontWeight: '500',
-                      backgroundColor: 
-                        apoiador['INDICADOR DE ENGAJAMENTO']?.includes('Muito Alto') || apoiador['INDICADOR DE ENGAJAMENTO']?.includes('Alto') 
-                          ? 'var(--color-green-bg)' 
-                          : apoiador['INDICADOR DE ENGAJAMENTO']?.includes('Médio') 
-                            ? 'var(--color-orange-bg)' 
-                            : 'var(--color-blue-bg)',
-                      color: 
-                        apoiador['INDICADOR DE ENGAJAMENTO']?.includes('Muito Alto') || apoiador['INDICADOR DE ENGAJAMENTO']?.includes('Alto') 
-                          ? 'var(--color-green-text)' 
-                          : apoiador['INDICADOR DE ENGAJAMENTO']?.includes('Médio') 
-                            ? 'var(--color-orange-text)' 
-                            : 'var(--color-primary)'
-                    }}>
-                      {apoiador['INDICADOR DE ENGAJAMENTO']}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px' }}>{apoiador.CONTATO || '-'}</td>
+                  <td style={{ padding: '16px', fontWeight: '500' }}>{apoiador.nome}</td>
+                  <td style={{ padding: '16px' }}>{apoiador.municipio}</td>
+                  <td style={{ padding: '16px' }}>{apoiador.area_atuacao}</td>
+                  <td style={{ padding: '16px' }}>{apoiador.nucleo_indicacao}</td>
+                  <td style={{ padding: '16px' }}>{apoiador.telefone || '-'}</td>
                   <td style={{ padding: '16px' }}>
                     <input 
                       type="datetime-local" 
-                      value={apoiador.AGENDA && apoiador.AGENDA !== 'A definir' ? apoiador.AGENDA : ''}
+                      value={apoiador.agenda && apoiador.agenda !== 'A definir' ? apoiador.agenda : ''}
                       onChange={(e) => handleAgendaChange(index, e.target.value)}
                       style={{ 
                         padding: '6px 10px', 
@@ -230,33 +251,29 @@ const Apoiadores = () => {
         <form onSubmit={handleSaveApoiador} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Nome do Apoiador</label>
-            <input required type="text" name="APOIADOR" value={novoApoiador.APOIADOR || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+            <input required type="text" name="nome" value={novoApoiador.nome || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Município</label>
-            <input required type="text" name="MUNICÍPIO" value={novoApoiador['MUNICÍPIO'] || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Área de Atuação</label>
-            <input type="text" name="ÁREA DE ATUAÇÃO" value={novoApoiador['ÁREA DE ATUAÇÃO'] || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Núcleo de Indicação</label>
-            <input type="text" name="NÚCLEO DE INDICAÇÃO" value={novoApoiador['NÚCLEO DE INDICAÇÃO'] || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Engajamento</label>
-            <select name="INDICADOR DE ENGAJAMENTO" value={novoApoiador['INDICADOR DE ENGAJAMENTO'] || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
-              <option value="">Selecione...</option>
-              <option value="Muito Alto">Muito Alto</option>
-              <option value="Alto">Alto</option>
-              <option value="Médio">Médio</option>
-              <option value="Baixo">Baixo</option>
+            <select required name="municipio" value={novoApoiador.municipio || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)', appearance: 'none' }}>
+              <option value="">Selecione a sua cidade...</option>
+              {municipiosPA.map(mun => (
+                <option key={mun} value={mun}>{mun}</option>
+              ))}
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Área de Atuação</label>
+            <input type="text" name="area_atuacao" value={novoApoiador.area_atuacao || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Quem lhe indicou?</label>
+            <input type="text" name="nucleo_indicacao" value={novoApoiador.nucleo_indicacao || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Faixa Etária</label>
-            <select name="FAIXA_ETARIA" value={novoApoiador.FAIXA_ETARIA || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+            <select name="faixa_etaria" value={novoApoiador.faixa_etaria || ''} onChange={handleInputChange} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
               <option value="">Selecione...</option>
               <option value="16-24 anos">16-24 anos</option>
               <option value="25-34 anos">25-34 anos</option>
@@ -265,13 +282,10 @@ const Apoiadores = () => {
               <option value="60+ anos">60+ anos</option>
             </select>
           </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Informações de Contato</label>
-            <input type="text" name="CONTATO" value={novoApoiador.CONTATO || ''} onChange={handleInputChange} placeholder="Email, Telefone, etc." style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Outras Informações (Opcional)</label>
-            <textarea name="OBSERVACOES" value={novoApoiador.OBSERVACOES || ''} onChange={handleInputChange} placeholder="Anotações adicionais, histórico, etc." rows={3} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)', fontFamily: 'inherit', resize: 'vertical' }} />
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Telefone</label>
+            <input type="tel" name="telefone" value={novoApoiador.telefone || ''} onChange={handleInputChange} placeholder="(00) 00000-0000" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }} />
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>

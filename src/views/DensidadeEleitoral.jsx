@@ -1,17 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './Views.css';
 import Pill from '../components/ui/Pill';
-import { Map, Flame, Info, HelpCircle } from 'lucide-react';
+import { Map as MapIcon, Flame, HelpCircle, Users, Activity, Calendar as CalendarIcon } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 import apoiadoresData from '../data/apoiadores.json';
+import Select from 'react-select';
+import ibgeMap from '../data/ibgeMap.json';
+
+const MapController = ({ selectedMunicipios, geoData }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (selectedMunicipios && selectedMunicipios.length > 0 && geoData) {
+      const selectedCodes = selectedMunicipios.map(m => m.value);
+      const features = geoData.features.filter(f => selectedCodes.includes(f.properties.codarea));
+      
+      if (features.length > 0) {
+        if (features.length === 1 && features[0].properties.centroide) {
+           map.flyTo([features[0].properties.centroide[1], features[0].properties.centroide[0]], 8, { duration: 1.5 });
+        } else {
+           let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+           features.forEach(f => {
+              if(f.properties.centroide) {
+                 const [lng, lat] = f.properties.centroide;
+                 if (lat < minLat) minLat = lat;
+                 if (lat > maxLat) maxLat = lat;
+                 if (lng < minLng) minLng = lng;
+                 if (lng > maxLng) maxLng = lng;
+              }
+           });
+           const padding = 0.5;
+           const bounds = [
+              [minLat - padding, minLng - padding],
+              [maxLat + padding, maxLng + padding]
+           ];
+           map.flyToBounds(bounds, { duration: 1.5 });
+        }
+      }
+    } else {
+       map.flyTo([-3.8, -52.2], 5, { duration: 1.5 });
+    }
+  }, [selectedMunicipios, geoData, map]);
+  
+  return null;
+};
 
 const DensidadeEleitoral = () => {
   const [geoData, setGeoData] = useState(null);
   const [mapMode, setMapMode] = useState('densidade'); // 'densidade' ou 'calor'
   const [realDataMap, setRealDataMap] = useState({});
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [selectedMunicipios, setSelectedMunicipios] = useState([]);
 
   const normalizeString = (str) => {
     if (!str) return '';
@@ -67,27 +108,37 @@ const DensidadeEleitoral = () => {
   }, []);
 
   const getStyle = (feature) => {
-    const name = feature.properties.name || feature.properties.nome;
+    const codarea = feature.properties.codarea;
+    const name = ibgeMap[codarea] || `Município ${codarea}`;
     const normMun = normalizeString(name);
     const data = realDataMap[normMun];
 
-    let color = '#ccc';
-    let fillOpacity = 0.3;
-    let weight = 0.5;
-    let borderColor = 'white';
+    const hasSelection = selectedMunicipios && selectedMunicipios.length > 0;
+    const isSelected = !hasSelection || selectedMunicipios.some(m => m.value === codarea);
 
+    // Default: light blue for the whole state instead of gray
+    let color = '#bfdbfe'; // light blue (Tailwind blue-200)
+    let fillOpacity = isSelected ? 0.4 : 0.1;
+    let weight = isSelected ? 1 : 0.2;
+    let borderColor = isSelected ? 'white' : 'rgba(255,255,255,0.2)';
+
+    // If it has data, apply data colors
     if (data && data.count > 0) {
       if (mapMode === 'densidade') {
-        // base azul, intensidade pelo count
         const intensity = Math.min(100, 40 + (data.count * 10));
         color = `hsl(217, 90%, ${100 - (intensity * 0.6)}%)`; 
-        fillOpacity = 0.8;
+        fillOpacity = isSelected ? 0.8 : 0.1;
       } else {
-        // modo calor
         const intensity = data.maxEngajamento === 3 ? 90 : data.maxEngajamento === 2 ? 70 : 50;
         color = `hsl(0, 90%, ${100 - (intensity * 0.5)}%)`;
-        fillOpacity = 0.8;
+        fillOpacity = isSelected ? 0.8 : 0.1;
       }
+    } else if (hasSelection && isSelected) {
+      // If it's explicitly selected in the search but has no data, highlight it with vibrant blue
+      color = '#3b82f6'; // Bright blue (Tailwind blue-500)
+      fillOpacity = 0.7;
+      borderColor = '#1d4ed8'; // Darker blue border
+      weight = 2;
     }
 
     return {
@@ -100,7 +151,8 @@ const DensidadeEleitoral = () => {
   };
 
   const onEachFeature = (feature, layer) => {
-    const name = feature.properties.name || feature.properties.nome || `Município ${feature.properties.codarea}`;
+    const codarea = feature.properties.codarea;
+    const name = ibgeMap[codarea] || `Município ${codarea}`;
     const normMun = normalizeString(name);
     const data = realDataMap[normMun];
     
@@ -154,6 +206,28 @@ const DensidadeEleitoral = () => {
     { nome: 'Parauapebas', votos: '35k votos', progresso: '30%' },
   ];
 
+  const searchOptions = Object.keys(ibgeMap).map(cod => ({
+    value: cod,
+    label: ibgeMap[cod],
+  })).sort((a, b) => a.label.localeCompare(b.label));
+
+  // Calculates selected stats
+  let totalApoiadoresSel = 0;
+  let maxEngSel = 0;
+  let agendasSel = 0;
+  
+  if (selectedMunicipios && selectedMunicipios.length > 0) {
+     selectedMunicipios.forEach(m => {
+        const norm = normalizeString(m.label);
+        const data = realDataMap[norm];
+        if (data) {
+           totalApoiadoresSel += data.count;
+           agendasSel += data.agendas.length;
+           if (data.maxEngajamento > maxEngSel) maxEngSel = data.maxEngajamento;
+        }
+     });
+  }
+
   return (
     <div className="view-container animate-fade-in">
       <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -174,7 +248,7 @@ const DensidadeEleitoral = () => {
         
         <div className="pill-group">
           <Pill 
-            icon={Map} 
+            icon={MapIcon} 
             active={mapMode === 'densidade'}
             onClick={() => setMapMode('densidade')}
           >
@@ -190,6 +264,62 @@ const DensidadeEleitoral = () => {
         </div>
       </div>
 
+      <div className="view-section" style={{ marginBottom: '24px' }}>
+         <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>Filtre por Municípios para destacar e ver estatísticas:</label>
+         <Select
+            isMulti
+            name="municipios"
+            options={searchOptions}
+            className="basic-multi-select"
+            classNamePrefix="select"
+            placeholder="Pesquisar municípios (ex: Belém, Santarém...)"
+            value={selectedMunicipios}
+            onChange={setSelectedMunicipios}
+            styles={{
+              control: (base) => ({
+                ...base,
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                padding: '2px',
+                boxShadow: 'none',
+                '&:hover': {
+                  borderColor: 'var(--color-primary)'
+                }
+              })
+            }}
+         />
+      </div>
+
+      {selectedMunicipios && selectedMunicipios.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }} className="animate-fade-in">
+           <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', borderTop: '4px solid var(--color-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                 <Users size={20} color="var(--color-primary)" />
+                 <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Apoiadores no Filtro</h3>
+              </div>
+              <p style={{ margin: 0, fontSize: '2rem', fontWeight: '700' }}>{totalApoiadoresSel}</p>
+           </div>
+           
+           <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', borderTop: '4px solid var(--color-orange-text)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                 <Activity size={20} color="var(--color-orange-text)" />
+                 <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Engajamento Máximo</h3>
+              </div>
+              <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700' }}>
+                 {maxEngSel === 3 ? '🔥 Muito Alto' : maxEngSel === 2 ? '⚡ Alto' : maxEngSel === 1 ? '👍 Médio' : 'N/A'}
+              </p>
+           </div>
+
+           <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', borderTop: '4px solid var(--color-purple-text)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                 <CalendarIcon size={20} color="var(--color-purple-text)" />
+                 <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Agendas Pendentes</h3>
+              </div>
+              <p style={{ margin: 0, fontSize: '2rem', fontWeight: '700' }}>{agendasSel}</p>
+           </div>
+        </div>
+      )}
+
       <div className="view-section">
         <div className="chart-container" style={{ height: '550px', backgroundColor: '#e5e7eb', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
           {geoData ? (
@@ -200,11 +330,12 @@ const DensidadeEleitoral = () => {
               zoomControl={true}
             >
               <GeoJSON 
-                key={mapMode + Object.keys(realDataMap).length}
+                key={mapMode + Object.keys(realDataMap).length + (selectedMunicipios ? selectedMunicipios.length : 0)}
                 data={geoData} 
                 style={getStyle}
                 onEachFeature={onEachFeature}
               />
+              <MapController selectedMunicipios={selectedMunicipios} geoData={geoData} />
             </MapContainer>
           ) : (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
