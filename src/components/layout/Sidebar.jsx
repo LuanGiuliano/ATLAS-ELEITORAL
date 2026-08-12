@@ -14,7 +14,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="logo-placeholder"></div>
+        <img src="/logo.png" alt="Logo VoteElieth" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'contain', backgroundColor: 'white' }} />
         <h2>VoteElieth</h2>
       </div>
 

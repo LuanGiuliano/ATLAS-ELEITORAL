@@ -22,9 +22,7 @@ const Login = ({ onLogin }) => {
     <div className="login-container">
       <div className="login-card animate-fade-in">
         <div className="login-header">
-          <div className="login-logo">
-            <ShieldCheck size={32} />
-          </div>
+          <img src="/logo.png" alt="Logo VoteElieth" style={{ width: '100px', marginBottom: '16px', borderRadius: '8px' }} />
           <h1>VoteElieth</h1>
           <p>Acesso Restrito ao Painel de Comando</p>
         </div>
