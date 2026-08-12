@@ -71,7 +71,7 @@ const CadastroPublico = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-app)', padding: '20px' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gradient-primary)', padding: '20px' }}>
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '30px', borderRadius: '16px', boxShadow: 'var(--shadow-lg)', maxWidth: '500px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>Faça parte do nosso Time</h2>

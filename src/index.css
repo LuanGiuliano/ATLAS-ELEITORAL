@@ -11,9 +11,10 @@
   --text-on-dark: #ffffff;
   
   /* Primary Brand / Gradients */
-  --color-primary: #0052D4;
-  --gradient-primary: linear-gradient(135deg, #0056d6 0%, #1e6bf2 100%);
-  --gradient-secondary: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
+  --color-primary: #E6192B; /* Campaign Red */
+  --color-secondary: #0D47A1; /* Campaign Blue */
+  --gradient-primary: linear-gradient(135deg, #E6192B 0%, #0D47A1 100%);
+  --gradient-secondary: linear-gradient(135deg, #0D47A1 0%, #1565C0 100%);
   
   /* Status / Icon Colors */
   --color-blue-bg: #e0f2fe;

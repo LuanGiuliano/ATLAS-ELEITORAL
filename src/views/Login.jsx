@@ -25,7 +25,7 @@ const Login = ({ onLogin }) => {
           <div className="login-logo">
             <ShieldCheck size={32} />
           </div>
-          <h1>Atlas Eleitoral</h1>
+          <h1>VoteElieth</h1>
           <p>Acesso Restrito ao Painel de Comando</p>
         </div>
 

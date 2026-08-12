@@ -15,7 +15,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo-placeholder"></div>
-        <h2>ATLAS ELEITORAL</h2>
+        <h2>VoteElieth</h2>
       </div>
 
       <nav className="sidebar-nav">

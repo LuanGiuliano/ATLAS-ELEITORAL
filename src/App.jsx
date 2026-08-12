@@ -34,7 +34,7 @@ function App() {
       {/* Mobile Header for hamburger menu */}
       <header className="mobile-header">
         <div className="logo-placeholder-mobile"></div>
-        <h2>ATLAS ELEITORAL</h2>
+        <h2>VoteElieth</h2>
         <button 
           className="mobile-menu-btn"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
