@@ -63,7 +63,7 @@ const VisaoGeral = () => {
     <div className="view-container animate-fade-in">
       <div className="view-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <h1>Bem-vindo(a), Luan! 👋</h1>
+          <h1>Bem-vinda, Elieth! 👋</h1>
           <button 
             className="help-btn"
             onClick={() => setIsHelpOpen(true)}
