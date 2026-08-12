@@ -62,16 +62,20 @@ const VisaoGeral = () => {
   return (
     <div className="view-container animate-fade-in">
       <div className="view-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h1>Visão Geral</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1>Bem-vindo(a), Luan! 👋</h1>
           <button 
+            className="help-btn"
             onClick={() => setIsHelpOpen(true)}
+            aria-label="Ajuda"
             style={{ color: 'var(--color-primary)', background: 'var(--color-blue-bg)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none' }}
           >
             <HelpCircle size={18} />
           </button>
         </div>
-        <p>Resumo da campanha e panorama eleitoral.</p>
+        <p style={{ marginTop: '8px', lineHeight: '1.5', maxWidth: '800px' }}>
+          Este é o painel central do <strong>VoteElieth</strong>. Aqui você tem acesso em tempo real ao crescimento da campanha, panorama de apoiadores cadastrados e distribuição da força eleitoral pelo estado. Utilize o menu lateral para navegar entre as seções.
+        </p>
       </div>
 
       <div className="view-grid-top mb-lg">

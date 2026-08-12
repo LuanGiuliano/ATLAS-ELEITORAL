@@ -33,7 +33,7 @@ function App() {
     <div className="app-layout">
       {/* Mobile Header for hamburger menu */}
       <header className="mobile-header">
-        <img src="/logo.png" alt="Logo VoteElieth" style={{ width: '80px', height: 'auto', maxHeight: '48px', objectFit: 'contain' }} />
+        <img src="/logo.png" alt="Logo VoteElieth" style={{ width: '80px', height: 'auto', maxHeight: '48px', objectFit: 'contain', borderRadius: '8px' }} />
         <h2>VoteElieth</h2>
         <button 
           className="mobile-menu-btn"
