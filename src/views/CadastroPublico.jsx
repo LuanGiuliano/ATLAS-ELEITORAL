@@ -71,9 +71,20 @@ const CadastroPublico = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--gradient-primary)', padding: '20px' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      backgroundImage: 'url(/fundo-cadastro.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      padding: '20px' 
+    }}>
       <div style={{ backgroundColor: 'var(--bg-card)', padding: '30px', borderRadius: '16px', boxShadow: 'var(--shadow-lg)', maxWidth: '500px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <img src="/logo.png" alt="Logo VoteElieth" style={{ width: '120px', height: 'auto', marginBottom: '16px' }} />
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>Faça parte do nosso Time</h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Preencha seus dados para receber as novidades e ficar por dentro das atualizações da nossa campanha. <strong style={{ color: 'var(--color-primary)' }}>#VoteEliete</strong></p>
         </div>
