@@ -86,7 +86,7 @@ const CadastroPublico = () => {
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <img src="/logo.png" alt="Logo VoteElieth" style={{ width: '120px', height: 'auto', marginBottom: '16px' }} />
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>Faça parte do nosso Time</h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Preencha seus dados para receber as novidades e ficar por dentro das atualizações da nossa campanha. <strong style={{ color: 'var(--color-primary)' }}>#VoteEliete</strong></p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Preencha seus dados para receber as novidades e ficar por dentro das atualizações da nossa campanha. <strong style={{ color: 'var(--color-primary)' }}>#VoteElieth</strong></p>
         </div>
 
         {errorMsg && (
